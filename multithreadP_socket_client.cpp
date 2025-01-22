@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     sockaddr_in clientAddress;
     clientAddress.sin_family = AF_INET;
     clientAddress.sin_port = htons(PORT);
-    clientAddress.sin_addr.s_addr = inet_addr("169.254.119.129");
+    clientAddress.sin_addr.s_addr = INADDR_ANY;
     memset(clientAddress.sin_zero, 0, sizeof(clientAddress.sin_zero)); // init the bytes
 
     if ((connect(clientSocket, (struct sockaddr *) &clientAddress, sizeof(sockaddr_in))) == -1)

@@ -9,8 +9,8 @@
 #include <unistd.h>
 #include <mutex>
 
-// #define PORT 8081
 #define MAX_LEN 200
+#define NUM_COLORS 5
 
 using namespace std;
 
@@ -20,6 +20,12 @@ int clientSocket;
 bool exit_flag = false;
 pthread_t t_send, t_recv;
 
+string norm_color = "\033[0m"; // normal color
+string error_color = "\033[31m"; // error color
+string success_color = "\033[32m";
+string colors[] = {"\033[32m", "\033[33m", "\033[34m", "\033[35m","\033[36m"};
+
+string color(int code);
 void catch_ctrl_c(int signal);
 int  eraseText(int code);
 void *send_message(void *socket);
@@ -29,7 +35,7 @@ int main(int argc, char *argv[])
 {
     if (argc != 2)
     {
-        cerr << "usage: port" <<  endl;
+        cerr << error_color << "usage: port" << norm_color << endl;
         exit(0);
     }
 
@@ -44,7 +50,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        cout << "Socket creation success..." << endl;
+        cout << success_color << "Socket creation success..." << norm_color << endl;
     }
 
     sockaddr_in clientAddress;
@@ -60,24 +66,24 @@ int main(int argc, char *argv[])
     }
     else
     {
-        cout << "Connection success..." << endl;
+        cout << success_color << "Connection success..." << norm_color << endl;
     }
 
     cout << "Connected to chatroom!" << endl;
 
     signal(SIGINT, catch_ctrl_c); // catching the ctrl c and respond to the client quitting, if not, it will leave no message that they have quit
+    
     char name[MAX_LEN]; // buffer
     cout << "Enter your name: "; // the MAX_LEN is for buffering
     cin.getline(name, MAX_LEN);
     send(clientSocket, name, sizeof(name), 0);
 
-    cout << " ======== Welcome to Chatroom ======== " << endl;
+    cout << colors[NUM_COLORS-1] << " ======== Welcome to Chatroom ======== " << endl << norm_color;
 
     // Create send and receive threads
     // pthread_create(&t_send, NULL, send_message, (void *)pclientSocket);
     pthread_create(&t_send, NULL, send_message, &clientSocket);
     pthread_create(&t_recv, NULL, recv_message, &clientSocket);
-
 
     // Join threads
     pthread_join(t_send, NULL);
@@ -85,6 +91,11 @@ int main(int argc, char *argv[])
 
     close(clientSocket);
     return 0;
+}
+
+string color(int code)
+{
+    return colors[code % NUM_COLORS];
 }
 
 void catch_ctrl_c(int signal)
@@ -105,7 +116,7 @@ void *send_message(void *socket) {
 
     while (1) {
         char message[MAX_LEN];
-        cout << "You: ";
+        cout << "You: "; // add
         cin.getline(message, MAX_LEN);
 
         send(clientSocket, message, strlen(message), 0);
@@ -132,7 +143,7 @@ void *recv_message(void *socket) {
 
         if (bytes_received > 0) {
             message[bytes_received] = '\0'; // Null-terminate the string
-            cout << "\r " << message << endl;
+            cout << "\r" << message << endl;
             cout << "You: ";
             fflush(stdout);
         } else if (bytes_received == 0) {

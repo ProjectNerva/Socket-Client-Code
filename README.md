@@ -1,6 +1,6 @@
 # Socket-Client-Code
 
-A collection of C++ TCP socket client programs exploring progressively more complex networking and concurrency patterns, built with POSIX sockets and pthreads.
+A collection of C++ TCP socket client programs exploring progressively more complex networking and concurrency patterns, built with POSIX sockets and pthreads. Each client is designed to work with its counterpart in the [Socket-Server-Code](https://github.com/ProjectNerva/Socket-Server-Code) repository.
 
 ## Programs
 
@@ -10,7 +10,15 @@ A collection of C++ TCP socket client programs exploring progressively more comp
 | `chat_socket_client.cpp` | Interactive chat client — takes an IP and port as arguments, loops sending/receiving messages with session stats |
 | `multiSC_socket_client.cpp` | Chat client with chunked receive loop — handles multi-packet server responses correctly |
 | `multithreadP_socket_client.cpp` | Multithreaded chat client — separate pthreads for sending and receiving; supports named users and Ctrl+C graceful exit |
-| `toysim_pthread.cpp` | Toy pthread simulation — early prototype of the send/receive thread model |
+| `toysim_pthread.cpp` | Toy pthread simulation — early prototype of the send/receive thread model (doesn't connect to a server) |
+
+## Client-Server Pairing
+
+| Client | Server |
+|--------|--------|
+| `chat_socket_client.cpp` | `chat_socket_server.cpp` |
+| `multiSC_socket_client.cpp` | `multiSC_socket_server.cpp` |
+| `multithreadP_socket_client.cpp` | `multithreadP_socket_server.cpp` |
 
 ## Build
 
@@ -48,7 +56,7 @@ g++ -o toysim_pthread toysim_pthread.cpp -lpthread
 ```bash
 ./multithreadP_socket_client 8080
 ```
-Type `#exit` or press Ctrl+C to disconnect gracefully.
+Connects to `multithreadP_socket_server` running on the same machine. Messages longer than 199 characters are cut off. Type `#exit` or press Ctrl+C to disconnect gracefully.
 
 ## Requirements
 

@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <mutex>
+#include <atomic>
+#include <limits>
 
 // #define PORT 8081
 #define MAX_LEN 200
@@ -17,7 +19,7 @@ using namespace std;
 // TODO: Fix naming issue
 
 int clientSocket;
-bool exit_flag = false;
+atomic<bool> exit_flag(false); // read and written by both threads
 pthread_t t_send, t_recv;
 
 void catch_ctrl_c(int signal);
@@ -65,10 +67,16 @@ int main(int argc, char *argv[])
 
     cout << "Connected to chatroom!" << endl;
 
+    signal(SIGPIPE, SIG_IGN); // sending after the server closes shouldn't crash the client
     signal(SIGINT, catch_ctrl_c); // catching the ctrl c and respond to the client quitting, if not, it will leave no message that they have quit
-    char name[MAX_LEN]; // buffer
+    char name[MAX_LEN] = {0}; // buffer
     cout << "Enter your name: "; // the MAX_LEN is for buffering
     cin.getline(name, MAX_LEN);
+    if (cin.fail() && !cin.eof()) {
+        // name was too long: keep what fit and drop the rest of the line
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
     send(clientSocket, name, sizeof(name), 0);
 
     cout << " ======== Welcome to Chatroom ======== " << endl;
@@ -87,16 +95,16 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+// only uses calls that are safe inside a signal handler (no cout, locks, or pthread_cancel)
 void catch_ctrl_c(int signal)
 {
-    char exit_message[MAX_LEN] = "#exit";
+    const char exit_message[] = "#exit";
     send(clientSocket, exit_message, strlen(exit_message), 0);
-    exit_flag = true;
-    pthread_cancel(t_send);
-    pthread_cancel(t_recv);
     close(clientSocket);
-    cout << "\n You have left the chat." << endl;
-    exit(signal);
+
+    const char leave_message[] = "\n You have left the chat.\n";
+    write(STDOUT_FILENO, leave_message, strlen(leave_message));
+    _exit(0);
 }
 
 // send messages
@@ -108,12 +116,25 @@ void *send_message(void *socket) {
         cout << "You: ";
         cin.getline(message, MAX_LEN);
 
-        send(clientSocket, message, strlen(message), 0);
+        if (cin.fail() && cin.eof()) {
+            strcpy(message, "#exit"); // Ctrl+D (end of input) leaves the chat
+        } else if (cin.fail()) {
+            // line was too long: getline kept the first MAX_LEN - 1 characters,
+            // so clear the error and drop the rest or every later read fails
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        if (exit_flag) break; // server closed the connection while we were typing
+
+        if (send(clientSocket, message, strlen(message), 0) < 0) {
+            exit_flag = true;
+            break;
+        }
 
         if (strcmp(message, "#exit") == 0) {
             exit_flag = true;
-            pthread_cancel(t_recv);
-            close(clientSocket);
+            shutdown(clientSocket, SHUT_RDWR); // wakes up the receive thread so it can exit on its own
             break;
         }
     }
@@ -127,16 +148,19 @@ void *recv_message(void *socket) {
     while (1) {
         if (exit_flag) break;
 
-        char message[MAX_LEN];
-        int bytes_received = recv(clientSocket, message, sizeof(message), 0);
+        // the server sends every message as exactly MAX_LEN bytes, so wait for all of them
+        char message[MAX_LEN + 1];
+        int bytes_received = recv(clientSocket, message, MAX_LEN, MSG_WAITALL);
+
+        if (exit_flag) break;
 
         if (bytes_received > 0) {
             message[bytes_received] = '\0'; // Null-terminate the string
             cout << "\r " << message << endl;
             cout << "You: ";
             fflush(stdout);
-        } else if (bytes_received == 0) {
-            // Connection closed by the server
+        } else {
+            // Connection closed by the server (or an error)
             cout << "\nServer has closed the connection." << endl;
             exit_flag = true;
             break;

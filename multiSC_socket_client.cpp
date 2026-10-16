@@ -1,15 +1,35 @@
 #include <iostream>
 #include <cstring>
+#include <string>
 #include <unistd.h>
 #include <arpa/inet.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
+// Receive one complete message from the server. Returns false if the server disconnected.
+bool receive_message(int client_socket, std::string &received_message) {
+    char buffer[BUFFER_SIZE];
+    received_message.clear();
+    while (true) {
+        int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        if (bytes_received <= 0) {
+            return false;
+        }
+
+        // Append received data to the full message
+        received_message.append(buffer, bytes_received);
+
+        // No delimiter in this protocol, so a short read is treated as the end of the message
+        if (bytes_received < BUFFER_SIZE) {
+            return true;
+        }
+    }
+}
+
 int main() {
     int client_socket;
     struct sockaddr_in server_address;
-    char buffer[BUFFER_SIZE];
 
     // Create a socket
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -38,6 +58,16 @@ int main() {
 
     std::cout << "Connected to the server!" << std::endl;
 
+    // The server greets every new client first; read it now so it isn't
+    // mistaken for the reply to the first message
+    std::string received_message;
+    if (!receive_message(client_socket, received_message)) {
+        std::cout << "Server disconnected." << std::endl;
+        close(client_socket);
+        return 0;
+    }
+    std::cout << "Server: " << received_message << std::endl;
+
     // Communication loop
     while (true) {
         // Send message to the server
@@ -54,28 +84,14 @@ int main() {
         }
 
         // Receive complete message from the server
-        std::cout << "Server: ";
-        std::string received_message;
-        while (true) {
-            memset(buffer, 0, BUFFER_SIZE);
-            int bytes_received = recv(client_socket, buffer, BUFFER_SIZE, 0);
-            if (bytes_received <= 0) {
-                std::cout << "Server disconnected." << std::endl;
-                close(client_socket);
-                return 0;
-            }
-
-            // Append received data to the full message
-            received_message.append(buffer, bytes_received);
-
-            // Check for message termination (optional: server could send a delimiter, e.g., '\n')
-            if (bytes_received < BUFFER_SIZE) { // All data has been received
-                break;
-            }
+        if (!receive_message(client_socket, received_message)) {
+            std::cout << "Server disconnected." << std::endl;
+            close(client_socket);
+            return 0;
         }
 
         // Print the complete message
-        std::cout << received_message << std::endl;
+        std::cout << "Server: " << received_message << std::endl;
     }
 
     // Close the socket

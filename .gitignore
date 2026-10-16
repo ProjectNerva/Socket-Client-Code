@@ -1,0 +1,7 @@
+# compiled programs
+test_socket_client
+chat_socket_client
+multiSC_socket_client
+multithreadP_socket_client
+toysim_pthread
+*.dSYM/

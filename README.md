@@ -8,9 +8,9 @@ A collection of C++ TCP socket client programs exploring progressively more comp
 |------|-------------|
 | `test_socket_client.cpp` | Minimal client — connects to `localhost:8080` and sends a single hardcoded message |
 | `chat_socket_client.cpp` | Interactive chat client — takes an IP and port as arguments, loops sending/receiving messages with session stats |
-| `multiSC_socket_client.cpp` | Chat client with chunked receive loop — handles multi-packet server responses correctly |
+| `multiSC_socket_client.cpp` | Echo client with chunked receive loop — prints the server's welcome message, then sends messages and prints each echoed reply |
 | `multithreadP_socket_client.cpp` | Multithreaded chat client — separate pthreads for sending and receiving; supports named users and Ctrl+C graceful exit |
-| `toysim_pthread.cpp` | Toy pthread simulation — early prototype of the send/receive thread model (doesn't connect to a server) |
+| `toysim_pthread.cpp` | Toy pthread simulation — unfinished early prototype of the send/receive thread model (doesn't connect to a server) |
 
 ## Client-Server Pairing
 
@@ -51,12 +51,13 @@ g++ -o toysim_pthread toysim_pthread.cpp -lpthread
 ```bash
 ./multiSC_socket_client
 ```
+Type `exit` to disconnect. The protocol has no message delimiter, so a reply is treated as complete when a read comes back shorter than the 1024-byte buffer.
 
 **multithreadP_socket_client** — pass port number (connects to `localhost`):
 ```bash
 ./multithreadP_socket_client 8080
 ```
-Connects to `multithreadP_socket_server` running on the same machine. Messages longer than 199 characters are cut off. Type `#exit` or press Ctrl+C to disconnect gracefully.
+Connects to `multithreadP_socket_server` running on the same machine. Messages longer than 199 characters are cut off (the rest of the line is dropped). Type `#exit`, press Ctrl+C, or press Ctrl+D to disconnect gracefully.
 
 ## Requirements
 

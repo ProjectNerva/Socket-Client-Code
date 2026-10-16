@@ -4,6 +4,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <cstring>
+#include <csignal>
 #define PORT 9090
 #define MAX_LEN 200
 
@@ -17,7 +19,7 @@ void * ThreadFunction(void *arguments);
 
 void catch_ctrl_c(int signal);
 void * send_message(void *socket);
-void *recv_message(int *socket);
+void *recv_message(void *socket);
 
 int main() {
   
@@ -44,7 +46,7 @@ int main() {
   
   // Creating the thread
   pthread_create(&thread1, NULL, ThreadFunction, NULL);
-  pthread_create(&t_send, NULL, send_message, NULL);
+  pthread_create(&t_send, NULL, send_message, &clientSocket);
   return 0;
 }
 void * ThreadFunction(void *arguments)

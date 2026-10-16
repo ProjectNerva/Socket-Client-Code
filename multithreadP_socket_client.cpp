@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <mutex>
 #include <atomic>
+#include <limits>
 
 // #define PORT 8081
 #define MAX_LEN 200
@@ -71,6 +72,11 @@ int main(int argc, char *argv[])
     char name[MAX_LEN] = {0}; // buffer
     cout << "Enter your name: "; // the MAX_LEN is for buffering
     cin.getline(name, MAX_LEN);
+    if (cin.fail() && !cin.eof()) {
+        // name was too long: keep what fit and drop the rest of the line
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
     send(clientSocket, name, sizeof(name), 0);
 
     cout << " ======== Welcome to Chatroom ======== " << endl;
@@ -109,6 +115,15 @@ void *send_message(void *socket) {
         char message[MAX_LEN];
         cout << "You: ";
         cin.getline(message, MAX_LEN);
+
+        if (cin.fail() && cin.eof()) {
+            strcpy(message, "#exit"); // Ctrl+D (end of input) leaves the chat
+        } else if (cin.fail()) {
+            // line was too long: getline kept the first MAX_LEN - 1 characters,
+            // so clear the error and drop the rest or every later read fails
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
 
         if (exit_flag) break; // server closed the connection while we were typing
 

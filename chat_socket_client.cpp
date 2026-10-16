@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     }
 
     cout << "Connected to the server!" << endl;
-    int bytesRead, bytesWritten = 0;
+    int bytesRead = 0, bytesWritten = 0;
     struct timeval start1, end1;
     gettimeofday(&start1, NULL);
 
